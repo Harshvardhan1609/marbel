@@ -29,7 +29,38 @@ const STATS_ITEMS = [
   },
 ];
 
-export default function StatsBar() {
+interface CustomStat {
+  value: string;
+  label: string;
+}
+
+export default function StatsBar({ customStats }: { customStats?: CustomStat[] | null }) {
+  const DEFAULT_DESCRIPTIONS = [
+    "Curating and processing nature's masterpieces since 2001.",
+    "Unique selections of marble, granite, onyx, and quartzite.",
+    "Bespoke residences, high-end hotels, and civic structures.",
+    "Ready-to-ship premium inventory housed in our warehouses.",
+  ];
+
+  const parseStatValue = (val: string) => {
+    const numMatch = val.match(/\d+/);
+    const to = numMatch ? parseInt(numMatch[0], 10) : 0;
+    const suffix = val.replace(/\d+/, "");
+    return { to, suffix };
+  };
+
+  const stats = customStats && customStats.length > 0
+    ? customStats.map((item, idx) => {
+        const { to, suffix } = parseStatValue(item.value || "");
+        return {
+          to,
+          suffix,
+          label: item.label || "",
+          description: DEFAULT_DESCRIPTIONS[idx % DEFAULT_DESCRIPTIONS.length],
+        };
+      })
+    : STATS_ITEMS;
+
   return (
     <section className="bg-brand-charcoal border-y border-brand-gold/10 text-brand-ivory py-20 px-6 md:px-12 relative overflow-hidden">
       {/* Background marble vein accent drawing */}
@@ -37,7 +68,7 @@ export default function StatsBar() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 divide-y sm:divide-y-0 lg:divide-x divide-brand-gold/10">
-          {STATS_ITEMS.map((stat, idx) => (
+          {stats.map((stat, idx) => (
             <div
               key={idx}
               className={`flex flex-col space-y-3 justify-center ${

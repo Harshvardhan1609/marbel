@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Clock, User, ArrowRight } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface BlogPost {
   id: string;
   title: string;

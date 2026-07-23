@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AnimatedCounter } from "@/components/motion";
-import { Database, FolderHeart, MailIcon, Settings } from "lucide-react";
+import { Database, FolderHeart, MailIcon, Settings, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -12,32 +12,37 @@ export default async function AdminDashboardPage() {
   let totalProducts = 0;
   let publishedProjects = 0;
   let newEnquiries = 0;
+  let totalBlogs = 0;
 
   try {
     const supabase = createClient();
 
     // Query statistics in parallel
-    const [prodRes, projRes, enqRes] = await Promise.all([
+    const [prodRes, projRes, enqRes, blogRes] = await Promise.all([
       supabase.from("products").select("id", { count: "exact", head: true }),
       supabase.from("projects").select("id", { count: "exact", head: true }).eq("is_published", true),
       supabase.from("enquiries").select("id", { count: "exact", head: true }).gte("created_at", oneWeekAgoISO),
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }),
     ]);
 
     totalProducts = prodRes.count || 0;
     publishedProjects = projRes.count || 0;
     newEnquiries = enqRes.count || 0;
+    totalBlogs = blogRes.count || 0;
 
     // Use dummy/mock metrics as fallbacks if database tables are unseeded (all counts are 0)
     if (totalProducts === 0 && publishedProjects === 0 && newEnquiries === 0) {
       totalProducts = 12;
       publishedProjects = 4;
       newEnquiries = 7;
+      totalBlogs = 2;
     }
   } catch (err) {
     console.error("Failed to query dashboard metrics from Supabase, using mock numbers:", err);
     totalProducts = 12;
     publishedProjects = 4;
     newEnquiries = 7;
+    totalBlogs = 2;
   }
 
   const statCards = [
@@ -54,6 +59,13 @@ export default async function AdminDashboardPage() {
       desc: "Case studies active on the public portfolio grid.",
       icon: FolderHeart,
       color: "text-brand-gold",
+    },
+    {
+      title: "Journal Blog Posts",
+      value: totalBlogs,
+      desc: "Articles and design guides published on the stone journal.",
+      icon: FileText,
+      color: "text-purple-400",
     },
     {
       title: "New Enquiries (7d)",
@@ -79,7 +91,7 @@ export default async function AdminDashboardPage() {
       <div className="h-[1px] w-full bg-brand-gold/15 animate-pulse" />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {statCards.map((card, idx) => {
           const Icon = card.icon;
           return (

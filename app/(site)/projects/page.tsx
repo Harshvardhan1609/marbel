@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import ProjectsClient from "@/components/projects/ProjectsClient";
 
+export const dynamic = "force-dynamic";
+
 const MOCK_PROJECTS = [
   {
     id: "proj-1",

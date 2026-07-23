@@ -4,6 +4,8 @@ import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { Clock, User, ArrowLeft } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface BlogPost {
   id: string;
   title: string;

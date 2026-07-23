@@ -26,17 +26,37 @@ const HERO_SLIDES = [
   },
 ];
 
-export default function HeroCarousel() {
+interface CustomSlide {
+  title: string;
+  subtitle: string;
+}
+
+export default function HeroCarousel({ customSlides }: { customSlides?: CustomSlide[] | null }) {
   const [current, setCurrent] = useState(0);
+
+  const images = [
+    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=2070",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070",
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070",
+  ];
+
+  const slides = customSlides && customSlides.length > 0
+    ? customSlides.map((slide, idx) => ({
+        image: images[idx % images.length],
+        title: slide.title || "",
+        subtitle: "",
+        description: slide.subtitle || "",
+      }))
+    : HERO_SLIDES;
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % HERO_SLIDES.length);
+      setCurrent((prev) => (prev + 1) % slides.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
-  const slide = HERO_SLIDES[current];
+  const slide = slides[current];
 
   // Text splitting for staggered reveal
   const headlineWords = `${slide.title} ${slide.subtitle}`.split(" ");
@@ -149,7 +169,7 @@ export default function HeroCarousel() {
 
       {/* Progress / Slide Indicators */}
       <div className="absolute bottom-10 right-6 md:right-12 z-20 flex space-x-3">
-        {HERO_SLIDES.map((_, idx) => (
+        {slides.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrent(idx)}

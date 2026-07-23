@@ -4,6 +4,8 @@ import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { Calendar, MapPin, Tag, ArrowLeft, ArrowUpRight } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Project {
   id: string;
   title: string;

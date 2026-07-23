@@ -55,7 +55,19 @@ const CATEGORIES = [
   },
 ];
 
-export default function CategoryGrid() {
+export default function CategoryGrid({ customOrder }: { customOrder?: string[] | null }) {
+  const orderedCategories = [...CATEGORIES];
+  if (customOrder && customOrder.length > 0) {
+    orderedCategories.sort((a, b) => {
+      const idxA = customOrder.indexOf(a.slug);
+      const idxB = customOrder.indexOf(b.slug);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
+  }
+
   return (
     <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto bg-brand-ivory text-brand-charcoal">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
@@ -73,7 +85,7 @@ export default function CategoryGrid() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {CATEGORIES.map((cat) => (
+        {orderedCategories.map((cat) => (
           <Link
             key={cat.slug}
             href={`/collections?category=${cat.slug}`}

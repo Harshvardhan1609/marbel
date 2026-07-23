@@ -3,6 +3,8 @@ import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import ProductDetailClient from "@/components/collections/ProductDetailClient";
 
+export const dynamic = "force-dynamic";
+
 interface Product {
   id: string;
   name: string;

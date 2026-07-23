@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, ShoppingBag, Mail, FileEdit, LogOut } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Mail, FileEdit, LogOut, FileText } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { label: "Products", href: "/admin/products", icon: ShoppingBag },
+    { label: "Blog Editor", href: "/admin/blog", icon: FileText },
     { label: "Enquiries", href: "/admin/enquiries", icon: Mail },
     { label: "Content Editor", href: "/admin/content", icon: FileEdit },
   ];
