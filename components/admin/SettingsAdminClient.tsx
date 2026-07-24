@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Save, Check, Loader2, Settings, Globe, Shield, MessageSquare, Info, Sliders } from "lucide-react";
+import { Save, Check, Loader2, Settings, Globe, Shield, MessageSquare, Info, Sliders, Database } from "lucide-react";
 import { BrandSettings, SEOSettings } from "@/lib/settings";
 
 interface SettingsAdminClientProps {
@@ -18,9 +18,13 @@ export default function SettingsAdminClient({
   initialHeroSlides,
   initialStats,
 }: SettingsAdminClientProps) {
-  const [activeTab, setActiveTab] = useState<"brand" | "seo" | "address" | "story" | "hero">("brand");
+  const [activeTab, setActiveTab] = useState<"brand" | "seo" | "address" | "story" | "hero" | "backup">("brand");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Backup & Recovery States
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<string | null>(null);
 
   // Form State
   const [brand, setBrand] = useState<BrandSettings>(initialBrandSettings);
@@ -92,6 +96,132 @@ export default function SettingsAdminClient({
     const updated = [...stats];
     updated[idx].label = val;
     setStats(updated);
+  };
+
+  const handleExportBackup = async () => {
+    setBackupLoading(true);
+    setBackupStatus("Connecting to database...");
+    try {
+      const supabaseClient = createClient();
+      
+      setBackupStatus("Backing up categories...");
+      const { data: categories } = await supabaseClient.from("categories").select("*");
+      
+      setBackupStatus("Backing up products...");
+      const { data: products } = await supabaseClient.from("products").select("*");
+      
+      setBackupStatus("Backing up team members...");
+      const { data: team_members } = await supabaseClient.from("team_members").select("*");
+      
+      setBackupStatus("Backing up gallery items...");
+      const { data: gallery_items } = await supabaseClient.from("gallery_items").select("*");
+      
+      setBackupStatus("Backing up site configurations...");
+      const { data: site_settings } = await supabaseClient.from("site_settings").select("*");
+
+      const backupData = {
+        backup_version: 1,
+        timestamp: new Date().toISOString(),
+        tables: {
+          categories: categories || [],
+          products: products || [],
+          team_members: team_members || [],
+          gallery_items: gallery_items || [],
+          site_settings: site_settings || [],
+        },
+      };
+
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      const dateStr = new Date().toISOString().split("T")[0];
+      link.setAttribute("download", `arihant_granite_backup_${dateStr}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setBackupStatus("Backup exported successfully!");
+    } catch (err) {
+      setBackupStatus("Export failed: " + (err as Error).message);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm("Warning: Restoring backup will overwrite existing records. Do you want to proceed?")) {
+      e.target.value = "";
+      return;
+    }
+
+    setBackupLoading(true);
+    setBackupStatus("Reading backup file...");
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const backupData = JSON.parse(text);
+
+        if (!backupData.tables || !backupData.backup_version) {
+          throw new Error("Invalid backup file format. Missing tables or version.");
+        }
+
+        const supabaseClient = createClient();
+        const tables = backupData.tables;
+
+        // 1. Restore Categories (Dependencies first!)
+        if (tables.categories && tables.categories.length > 0) {
+          setBackupStatus("Restoring categories...");
+          const { error } = await supabaseClient.from("categories").upsert(tables.categories);
+          if (error) throw new Error("Categories restore failed: " + error.message);
+        }
+
+        // 2. Restore Products
+        if (tables.products && tables.products.length > 0) {
+          setBackupStatus("Restoring products...");
+          const { error } = await supabaseClient.from("products").upsert(tables.products);
+          if (error) throw new Error("Products restore failed: " + error.message);
+        }
+
+        // 3. Restore Team Members
+        if (tables.team_members && tables.team_members.length > 0) {
+          setBackupStatus("Restoring team members...");
+          const { error } = await supabaseClient.from("team_members").upsert(tables.team_members);
+          if (error) throw new Error("Team members restore failed: " + error.message);
+        }
+
+        // 4. Restore Gallery Items
+        if (tables.gallery_items && tables.gallery_items.length > 0) {
+          setBackupStatus("Restoring gallery items...");
+          const { error } = await supabaseClient.from("gallery_items").upsert(tables.gallery_items);
+          if (error) throw new Error("Gallery items restore failed: " + error.message);
+        }
+
+        // 5. Restore Site Settings
+        if (tables.site_settings && tables.site_settings.length > 0) {
+          setBackupStatus("Restoring site configurations...");
+          const { error } = await supabaseClient.from("site_settings").upsert(tables.site_settings);
+          if (error) throw new Error("Site settings restore failed: " + error.message);
+        }
+
+        setBackupStatus("Database restore completed successfully! Reloading site configurations...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (err) {
+        setBackupStatus("Restore failed: " + (err as Error).message);
+      } finally {
+        setBackupLoading(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -176,6 +306,19 @@ export default function SettingsAdminClient({
         >
           <Sliders className="h-4 w-4" />
           <span>Hero Slides & Stats</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("backup")}
+          type="button"
+          className={`px-5 py-3 border-b-2 text-xs uppercase tracking-widest font-sans font-semibold flex items-center gap-2 whitespace-nowrap transition-colors ${
+            activeTab === "backup"
+              ? "border-brand-gold text-brand-gold"
+              : "border-transparent text-brand-grey hover:text-brand-ivory"
+          }`}
+        >
+          <Database className="h-4 w-4" />
+          <span>Backup & Restore</span>
         </button>
       </div>
 
@@ -577,24 +720,96 @@ export default function SettingsAdminClient({
           </div>
         )}
 
+        {/* TAB 6: BACKUP & RESTORE */}
+        {activeTab === "backup" && (
+          <div className="bg-[#1A1A18] border border-brand-gold/10 p-6 sm:p-8 space-y-6">
+            <div className="space-y-1">
+              <h3 className="font-serif text-lg text-brand-ivory font-semibold tracking-wide">
+                6. Database Backup & Disaster Recovery
+              </h3>
+              <p className="text-[11px] text-brand-grey font-sans leading-relaxed">
+                Export all website configurations, products, categories, gallery items, and team profiles into a portable JSON backup file. You can restore this file at any time to recover your site database.
+              </p>
+            </div>
+
+            {/* Status Messages */}
+            {backupStatus && (
+              <div className={`p-4 text-xs font-sans border ${
+                backupStatus.includes("failed") || backupStatus.includes("Error")
+                  ? "bg-red-950/20 border-red-500/20 text-red-400"
+                  : backupStatus.includes("successful") || backupStatus.includes("completed")
+                  ? "bg-emerald-950/25 border-emerald-500/20 text-emerald-400"
+                  : "bg-brand-gold/5 border-brand-gold/20 text-brand-gold animate-pulse"
+              }`}>
+                <span>{backupStatus}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-brand-gold/10">
+              {/* Export Panel */}
+              <div className="space-y-4 p-5 border border-brand-gold/10 bg-brand-charcoal/20">
+                <span className="text-xs text-brand-ivory font-sans font-bold block uppercase tracking-wider text-brand-gold">
+                  1. Export Backup
+                </span>
+                <p className="text-[11px] text-brand-grey font-sans leading-relaxed">
+                  Generate and download a single JSON backup containing all stone records, categories, team pages, and brand settings.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  disabled={backupLoading}
+                  className="w-full py-3 bg-brand-gold text-brand-charcoal hover:bg-brand-ivory transition-colors font-sans text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 rounded-none disabled:opacity-50"
+                >
+                  {backupLoading && activeTab === "backup" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  <span>Export Database Backup</span>
+                </button>
+              </div>
+
+              {/* Import Panel */}
+              <div className="space-y-4 p-5 border border-brand-gold/10 bg-brand-charcoal/20">
+                <span className="text-xs text-brand-ivory font-sans font-bold block uppercase tracking-wider text-brand-gold">
+                  2. Restore Database
+                </span>
+                <p className="text-[11px] text-brand-grey font-sans leading-relaxed">
+                  Upload a previously exported JSON backup file to restore and overwrite the current database tables.
+                </p>
+                <label className="w-full py-3 bg-transparent border border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-brand-charcoal cursor-pointer transition-colors font-sans text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 rounded-none text-center disabled:opacity-50">
+                  <span>Upload & Restore JSON</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportBackup}
+                    disabled={backupLoading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Global Save Button */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-brand-gold text-brand-charcoal font-bold font-sans text-xs tracking-widest uppercase hover:bg-brand-ivory hover:text-brand-charcoal transition-colors flex items-center justify-center gap-2 rounded-none shadow-lg"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4.5 w-4.5 animate-spin" />
-              <span>Saving website settings...</span>
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              <span>Save Configurations</span>
-            </>
-          )}
-        </button>
+        {activeTab !== "backup" && (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 bg-brand-gold text-brand-charcoal font-bold font-sans text-xs tracking-widest uppercase hover:bg-brand-ivory hover:text-brand-charcoal transition-colors flex items-center justify-center gap-2 rounded-none shadow-lg"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                <span>Saving website settings...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span>Save Configurations</span>
+              </>
+            )}
+          </button>
+        )}
       </form>
     </div>
   );

@@ -5,6 +5,7 @@ import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/compress";
 import { Plus, Search, Edit2, Trash2, X, Upload, Loader2, Layers } from "lucide-react";
 
 const collectionFormSchema = z.object({
@@ -128,12 +129,13 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
     setUploadError(null);
     try {
+      file = await compressImage(file);
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `categories/${fileName}`;

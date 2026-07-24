@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -14,10 +15,25 @@ import {
   Image,
   Settings,
 } from "lucide-react";
+import GlobalSearch from "@/components/layout/GlobalSearch";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Listen for Ctrl+G / Cmd+G inside admin workspace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Skip rendering sidebar layout on the login screen
   if (pathname === "/admin/login") {
@@ -65,6 +81,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </span>
           </Link>
 
+          {/* Spotlight Search Hint widget */}
+          <div
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center justify-between p-2 border border-brand-gold/15 bg-brand-charcoal hover:border-brand-gold/40 cursor-pointer select-none transition-all group"
+          >
+            <span className="text-[9px] text-brand-grey group-hover:text-brand-ivory transition-colors font-sans font-semibold">
+              Spotlight Search
+            </span>
+            <kbd className="px-1.5 py-0.5 border border-brand-gold/25 text-[8px] font-mono text-brand-gold bg-[#141413]">
+              Ctrl+G
+            </kbd>
+          </div>
+
           {/* Navigation links */}
           <nav className="space-y-1.5 flex flex-col">
             {navItems.map((item) => {
@@ -105,6 +134,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-grow h-full overflow-y-auto bg-brand-charcoal p-8 md:p-12">
         {children}
       </main>
+
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 }

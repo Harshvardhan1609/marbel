@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight, Search } from "lucide-react";
-import SearchOverlay from "@/components/layout/SearchOverlay";
+import GlobalSearch from "@/components/layout/GlobalSearch";
 import { BrandSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
@@ -39,6 +39,18 @@ export default function Header({ settings }: HeaderProps) {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Listen for Ctrl+G / Cmd+G site-wide
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const shortName = settings?.short_name || "Arihant Marbles & Granite";
@@ -156,7 +168,7 @@ export default function Header({ settings }: HeaderProps) {
         )}
       </AnimatePresence>
 
-      <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
 }

@@ -5,6 +5,7 @@ import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/compress";
 import { Plus, Search, Edit2, Trash2, X, Upload, Loader2, Eye } from "lucide-react";
 import ProductCard from "@/components/collections/ProductCard";
 
@@ -63,6 +64,14 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
   const [submitting, setSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Bulk CSV Upload State
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkCSVInput, setBulkCSVInput] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [parsedProducts, setParsedProducts] = useState<any[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+
   const supabase = createClient();
 
   const {
@@ -93,6 +102,170 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
   const watchedStock = watch("stock_status") || "in_stock";
   const watchedCategoryId = watch("category_id");
   const watchedCategory = categories.find((c) => c.id === watchedCategoryId)?.name || "Exotic Slab";
+
+  // Helper to parse RFC 4180 CSV
+  const parseCSV = (text: string): string[][] => {
+    const result: string[][] = [];
+    let row: string[] = [];
+    let inQuotes = false;
+    let currentVal = "";
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentVal += '"';
+          i++; // skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push(currentVal);
+        currentVal = "";
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        row.push(currentVal);
+        result.push(row);
+        row = [];
+        currentVal = "";
+      } else {
+        currentVal += char;
+      }
+    }
+    if (currentVal || row.length > 0) {
+      row.push(currentVal);
+      result.push(row);
+    }
+    return result.filter((r) => r.length > 0 && r.some((f) => f.trim() !== ""));
+  };
+
+  const handleCSVParse = (text: string) => {
+    try {
+      const rows = parseCSV(text);
+      if (rows.length < 2) {
+        setParseErrors(["The CSV must contain a header row and at least one data row."]);
+        setParsedProducts([]);
+        return;
+      }
+
+      const headers = rows[0].map((h) => h.trim().toLowerCase());
+      const dataRows = rows.slice(1);
+
+      const nameIdx = headers.indexOf("name");
+      const slugIdx = headers.indexOf("slug");
+      const catIdx = headers.indexOf("category_slug");
+      const colourIdx = headers.indexOf("colour");
+      const finishIdx = headers.indexOf("finish");
+      const stockIdx = headers.indexOf("stock_status");
+      const thickIdx = headers.indexOf("thickness_options");
+      const appIdx = headers.indexOf("applications");
+      const imgIdx = headers.indexOf("image_urls");
+
+      if (nameIdx === -1 || slugIdx === -1 || catIdx === -1) {
+        setParseErrors(["CSV must contain 'name', 'slug', and 'category_slug' column headers."]);
+        setParsedProducts([]);
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parsed: any[] = [];
+      const errors: string[] = [];
+
+      dataRows.forEach((row, index) => {
+        const rowNum = index + 2;
+        if (row.length === 0 || row.every(val => !val.trim())) return; // skip empty lines
+
+        const name = row[nameIdx]?.trim();
+        const slug = row[slugIdx]?.trim();
+        const catSlug = row[catIdx]?.trim().toLowerCase();
+
+        if (!name || !slug || !catSlug) {
+          errors.push(`Row ${rowNum}: Name, slug, and category_slug are required.`);
+          return;
+        }
+
+        // Find category
+        const matchedCat = categories.find(
+          (c) => c.slug.toLowerCase() === catSlug || c.name.toLowerCase() === catSlug
+        );
+        if (!matchedCat) {
+          errors.push(`Row ${rowNum}: Category slug '${catSlug}' not found in database.`);
+          return;
+        }
+
+        const colour = colourIdx !== -1 && row[colourIdx] ? row[colourIdx].trim() : "Mixed";
+        const finish = finishIdx !== -1 && row[finishIdx] ? row[finishIdx].trim() : "Polished";
+        const stock = stockIdx !== -1 && row[stockIdx] ? row[stockIdx].trim() : "in_stock";
+        
+        const thick = thickIdx !== -1 && row[thickIdx] 
+          ? row[thickIdx].split("|").map(s => s.trim()).filter(Boolean) 
+          : ["20mm"];
+
+        const apps = appIdx !== -1 && row[appIdx] 
+          ? row[appIdx].split("|").map(s => s.trim()).filter(Boolean) 
+          : ["Flooring"];
+
+        const imgs = imgIdx !== -1 && row[imgIdx] 
+          ? row[imgIdx].split("|").map(s => s.trim()).filter(Boolean) 
+          : ["https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=600"];
+
+        parsed.push({
+          name,
+          slug,
+          category_id: matchedCat.id,
+          colour,
+          finish,
+          stock_status: stock,
+          thickness_options: thick,
+          applications: apps,
+          image_urls: imgs,
+          is_published: true,
+        });
+      });
+
+      setParsedProducts(parsed);
+      setParseErrors(errors);
+    } catch (err) {
+      setParseErrors(["Parsing error: " + (err as Error).message]);
+      setParsedProducts([]);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (parsedProducts.length === 0) return;
+    setImporting(true);
+    try {
+      const { error } = await supabase.from("products").insert(parsedProducts);
+      if (error) throw error;
+      alert(`Import complete! Successfully added ${parsedProducts.length} slabs.`);
+      setIsBulkModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      alert("Import failed: " + (err as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadBulkTemplate = () => {
+    const csvContent = 
+      "name,slug,category_slug,colour,finish,stock_status,thickness_options,applications,image_urls\n" +
+      '"Bianco Lasa","bianco-lasa","italian-marbles","White","Polished","in_stock","20mm|30mm","Flooring|Wall Cladding","https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=600"\n' +
+      '"Absolute Black","absolute-black","indian-granites","Black","Leathered","limited","20mm","Countertop|Parking","https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?q=80&w=600"\n';
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "arihant_slabs_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
@@ -145,12 +318,13 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
     setUploadError(null);
     try {
+      file = await compressImage(file);
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `slabs/${fileName}`;
@@ -271,13 +445,21 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
             Add, update, or remove natural stone inventory from the catalogue.
           </p>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="px-5 py-2.5 bg-brand-gold text-brand-charcoal hover:bg-brand-ivory font-semibold text-xs font-sans tracking-widest uppercase transition-colors flex items-center gap-1.5 rounded-none"
-        >
-          <Plus className="h-4.5 w-4.5" />
-          <span>Add New Slab</span>
-        </button>
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="px-5 py-2.5 bg-brand-charcoal text-brand-gold border border-brand-gold/30 hover:border-brand-gold font-semibold text-xs font-sans tracking-widest uppercase transition-colors flex items-center gap-1.5 rounded-none"
+          >
+            <span>Bulk Import</span>
+          </button>
+          <button
+            onClick={handleAddNew}
+            className="px-5 py-2.5 bg-brand-gold text-brand-charcoal hover:bg-brand-ivory font-semibold text-xs font-sans tracking-widest uppercase transition-colors flex items-center gap-1.5 rounded-none"
+          >
+            <Plus className="h-4.5 w-4.5" />
+            <span>Add New Slab</span>
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -666,6 +848,185 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
                   }}
                 />
               </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl bg-brand-charcoal border border-brand-gold/20 p-8 overflow-y-auto max-h-[90vh] space-y-6 flex flex-col justify-between shadow-2xl">
+            <div className="space-y-6">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center pb-4 border-b border-brand-gold/15">
+                <div className="space-y-1">
+                  <h3 className="font-serif text-2xl text-brand-ivory tracking-wide">
+                    Bulk Product Import
+                  </h3>
+                  <p className="text-xs text-brand-grey font-sans">
+                    Import multiple slabs in bulk using a CSV spreadsheet or copy-pasted Excel tables.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsBulkModalOpen(false);
+                    setBulkCSVInput("");
+                    setParsedProducts([]);
+                    setParseErrors([]);
+                  }}
+                  className="text-brand-grey hover:text-brand-gold transition-colors p-1"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Template Download Button */}
+              <div className="flex flex-wrap items-center justify-between gap-4 p-4 border border-brand-gold/10 bg-[#1A1A18]">
+                <div className="space-y-1">
+                  <span className="text-xs text-brand-ivory font-sans font-bold block">Need a Template?</span>
+                  <span className="text-[10px] text-brand-grey font-sans block">
+                    Download our structured CSV template to make sure your spreadsheet headers and categories match correctly.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={downloadBulkTemplate}
+                  className="px-4 py-2 border border-brand-gold bg-transparent hover:bg-brand-gold hover:text-brand-charcoal text-brand-gold transition-colors font-sans text-xs font-bold uppercase tracking-wider rounded-none"
+                >
+                  Download Template CSV
+                </button>
+              </div>
+
+              {/* CSV input: File upload & Textarea */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <label className="px-4 py-2.5 bg-brand-charcoal border border-brand-gold/20 hover:border-brand-gold hover:text-brand-gold cursor-pointer transition-colors text-brand-grey font-sans text-xs flex items-center gap-1.5 shrink-0">
+                    <Upload className="h-4 w-4" />
+                    <span>Upload CSV File</span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const text = event.target?.result as string;
+                          setBulkCSVInput(text);
+                          handleCSVParse(text);
+                        };
+                        reader.readAsText(file);
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[10px] text-brand-grey font-sans">
+                    OR paste your CSV / Tab-separated text directly below:
+                  </span>
+                </div>
+
+                <textarea
+                  rows={6}
+                  value={bulkCSVInput}
+                  onChange={(e) => {
+                    setBulkCSVInput(e.target.value);
+                    handleCSVParse(e.target.value);
+                  }}
+                  className="w-full bg-[#1A1A18] border border-brand-gold/20 focus:border-brand-gold p-4 text-xs font-mono text-brand-ivory focus:outline-none rounded-none resize-none placeholder-brand-grey/25"
+                  placeholder='name,slug,category_slug,colour,finish,stock_status,thickness_options,applications,image_urls&#10;"Arabescato Orobico","arabescato-orobico","italian-marbles","Grey","Polished","in_stock","20mm|30mm","Flooring|Countertop","https://images.unsplash.com/..."'
+                />
+              </div>
+
+              {/* Parsed & Validation Status */}
+              {(parseErrors.length > 0 || parsedProducts.length > 0) && (
+                <div className="space-y-4 max-h-[30vh] overflow-y-auto">
+                  <span className="text-[10px] uppercase tracking-wider text-brand-gold font-bold font-sans block">
+                    Validation Status
+                  </span>
+
+                  {/* Errors */}
+                  {parseErrors.length > 0 && (
+                    <div className="p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-sans space-y-1">
+                      <span className="font-bold block">The following validation issues were found:</span>
+                      <ul className="list-disc pl-5 space-y-0.5">
+                        {parseErrors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Success preview */}
+                  {parsedProducts.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-emerald-950/25 border border-emerald-500/20 text-emerald-400 text-xs font-sans">
+                        ✓ Found <span className="font-bold">{parsedProducts.length}</span> valid slab records ready to import.
+                      </div>
+
+                      {/* Preview Table */}
+                      <div className="border border-brand-gold/10 overflow-x-auto">
+                        <table className="w-full text-left text-[10px] text-brand-grey font-sans">
+                          <thead>
+                            <tr className="bg-[#1A1A18] border-b border-brand-gold/10 text-brand-ivory">
+                              <th className="p-2">Name</th>
+                              <th className="p-2">Slug</th>
+                              <th className="p-2">Colour</th>
+                              <th className="p-2">Finish</th>
+                              <th className="p-2">Stock</th>
+                              <th className="p-2">Thickness</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {parsedProducts.map((p, idx) => (
+                              <tr key={idx} className="border-b border-brand-gold/5 hover:bg-brand-charcoal/20">
+                                <td className="p-2 text-brand-ivory font-medium">{p.name}</td>
+                                <td className="p-2">{p.slug}</td>
+                                <td className="p-2">{p.colour}</td>
+                                <td className="p-2">{p.finish}</td>
+                                <td className="p-2">{p.stock_status}</td>
+                                <td className="p-2">{p.thickness_options?.join(", ")}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex gap-4 pt-6 border-t border-brand-gold/15 justify-end">
+              <button
+                type="button"
+                onClick={handleBulkImport}
+                disabled={importing || parsedProducts.length === 0 || parseErrors.length > 0}
+                className="px-6 py-3 bg-brand-gold text-brand-charcoal hover:bg-brand-ivory transition-colors font-sans text-xs font-bold uppercase tracking-widest flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                    <span>Importing...</span>
+                  </>
+                ) : (
+                  <span>Import {parsedProducts.length} Slabs</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkModalOpen(false);
+                  setBulkCSVInput("");
+                  setParsedProducts([]);
+                  setParseErrors([]);
+                }}
+                className="px-6 py-3 border border-brand-gold/10 hover:border-brand-gold text-brand-ivory transition-colors font-sans text-xs font-bold uppercase tracking-widest rounded-none"
+              >
+                Cancel
+              </button>
             </div>
 
           </div>
