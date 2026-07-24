@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F7F5F0; /* brand-ivory */
+  --foreground: #1A1A18; /* brand-charcoal */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1A1A18; /* brand-charcoal */
+    --foreground: #F7F5F0; /* brand-ivory */
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Premium selection and scrollbars */
+::selection {
+  background-color: #B08D3E; /* brand-gold */
+  color: #F7F5F0; /* brand-ivory */
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #70706B; /* brand-grey */
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B08D3E; /* brand-gold */
+}
+
+/* Elegant Luxury Base Typographics */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-wide;
+  }
+}
