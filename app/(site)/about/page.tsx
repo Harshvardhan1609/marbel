@@ -1,7 +1,6 @@
-"use client";
-
 import { Compass, Award, Cpu, Truck, CheckSquare } from "lucide-react";
 import { ScrollReveal, StaggerContainer } from "@/components/motion";
+import { getBrandSettings } from "@/lib/settings";
 
 const PROCESS_STEPS = [
   {
@@ -45,7 +44,10 @@ const CERTIFICATIONS = [
   "Italian Processing Standard Certified",
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const brandSettings = await getBrandSettings();
+  const shortName = brandSettings.short_name || "Arihant Marbles & Granite";
+
   return (
     <div className="bg-brand-ivory text-brand-charcoal min-h-screen">
       {/* Hero Header */}
@@ -55,10 +57,10 @@ export default function AboutPage() {
             Our Legacy
           </span>
           <h1 className="text-4xl md:text-6xl font-serif tracking-tight text-brand-ivory">
-            The Sudhir Story
+            The {shortName.split(" ")[0]} Story
           </h1>
           <p className="max-w-xl text-sm text-brand-grey font-sans leading-relaxed">
-            Sourcing geological masterpieces since 2001. Learn how we curating, processing, and delivering unique marble and granite to global structures.
+            Sourcing geological masterpieces since 2001. Learn how we are curating, processing, and delivering unique marble and granite to global structures.
           </p>
         </div>
       </div>
@@ -70,14 +72,14 @@ export default function AboutPage() {
             Sourced by Artistry
           </span>
           <h2 className="text-3xl md:text-5xl font-serif tracking-tight text-brand-charcoal">
-            Two Decades of Curating Nature&apos;s Masterpieces
+            {brandSettings.about_story_title || "Two Decades of Curating Nature's Masterpieces"}
           </h2>
           <div className="h-[1px] w-20 bg-brand-gold" />
-          <p className="text-sm text-brand-grey font-sans leading-relaxed font-light">
-            Founded with a passion for architectural stone curation, Sudhir Marbels has evolved from a local trading office into one of Kishangarh&apos;s premier processing plants. We believe that stone is not just a building material, but a permanent canvas of Earth&apos;s historical art.
+          <p className="text-sm text-brand-grey font-sans leading-relaxed font-light whitespace-pre-line">
+            {brandSettings.about_story_p1 || "Founded with a passion for architectural stone curation, Arihant Marbles and Granite has evolved from a local trading office into one of Kishangarh's premier processing plants. We believe that stone is not just a building material, but a permanent canvas of Earth's historical art."}
           </p>
-          <p className="text-sm text-brand-grey font-sans leading-relaxed font-light">
-            Our teams consult directly with architects, builders, and structural designers globally, matching stone densities and aesthetic veining options to bespoke layouts.
+          <p className="text-sm text-brand-grey font-sans leading-relaxed font-light whitespace-pre-line">
+            {brandSettings.about_story_p2 || "Our teams consult directly with architects, builders, and structural designers globally, matching stone densities and aesthetic veining options to bespoke layouts."}
           </p>
         </div>
         <div className="lg:col-span-6 relative aspect-video lg:aspect-square overflow-hidden border border-brand-gold/15 bg-brand-charcoal">

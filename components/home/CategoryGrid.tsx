@@ -55,8 +55,31 @@ const CATEGORIES = [
   },
 ];
 
-export default function CategoryGrid({ customOrder }: { customOrder?: string[] | null }) {
-  const orderedCategories = [...CATEGORIES];
+interface DB_Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  image_url?: string | null;
+}
+
+export default function CategoryGrid({
+  categories,
+  customOrder,
+}: {
+  categories?: DB_Category[];
+  customOrder?: string[] | null;
+}) {
+  const dbCategoriesMapped = categories && categories.length > 0
+    ? categories.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        description: c.description || "",
+        image: c.image_url || "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=600",
+      }))
+    : CATEGORIES;
+
+  const orderedCategories = [...dbCategoriesMapped];
   if (customOrder && customOrder.length > 0) {
     orderedCategories.sort((a, b) => {
       const idxA = customOrder.indexOf(a.slug);
@@ -67,6 +90,7 @@ export default function CategoryGrid({ customOrder }: { customOrder?: string[] |
       return 0;
     });
   }
+
 
   return (
     <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto bg-brand-ivory text-brand-charcoal">

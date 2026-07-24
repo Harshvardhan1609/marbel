@@ -1,7 +1,23 @@
 import Link from "next/link";
 import { Mail, Phone, MapPin, Instagram, Linkedin, ArrowRight } from "lucide-react";
+import { BrandSettings } from "@/lib/settings";
 
-export default function Footer() {
+interface FooterProps {
+  settings?: BrandSettings;
+}
+
+export default function Footer({ settings }: FooterProps) {
+  const shortName = settings?.short_name || "Arihant Marbles & Granite";
+  const nameParts = shortName.split(" ");
+  const firstWord = nameParts[0] || "Arihant";
+  const restOfName = nameParts.slice(1).join(" ") || "Marbles & Granite";
+
+  const email = settings?.contact_email || "info@arihantmarbles.com";
+  const phone = settings?.contact_phone || "+91 93529 95442";
+  const hours = settings?.hours || "Mon - Sat: 9:00 AM - 7:00 PM\nSunday: Closed";
+  const instagram = settings?.instagram_url || "https://instagram.com/arihantmarbles";
+  const linkedin = settings?.linkedin_url || "https://linkedin.com/company/arihantmarbles";
+
   return (
     <footer className="bg-brand-charcoal border-t border-brand-gold/10 text-brand-ivory/80 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -38,10 +54,10 @@ export default function Footer() {
           <div className="space-y-4">
             <Link href="/" className="flex flex-col">
               <span className="font-serif text-xl tracking-widest text-brand-gold font-bold uppercase">
-                Sudhir
+                {firstWord}
               </span>
               <span className="text-[10px] tracking-[0.3em] text-brand-grey uppercase font-sans -mt-1">
-                Marbels
+                {restOfName}
               </span>
             </Link>
             <p className="text-sm text-brand-grey font-sans leading-relaxed">
@@ -49,7 +65,7 @@ export default function Footer() {
             </p>
             <div className="flex space-x-4 pt-2">
               <a
-                href="https://instagram.com"
+                href={instagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-grey hover:text-brand-gold transition-colors"
@@ -58,7 +74,7 @@ export default function Footer() {
                 <Instagram className="h-5 w-5" />
               </a>
               <a
-                href="https://linkedin.com"
+                href={linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-grey hover:text-brand-gold transition-colors"
@@ -86,8 +102,18 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/gallery" className="hover:text-brand-gold transition-colors">
+                  Gallery
+                </Link>
+              </li>
+              <li>
                 <Link href="/projects" className="hover:text-brand-gold transition-colors">
                   Projects
+                </Link>
+              </li>
+              <li>
+                <Link href="/team" className="hover:text-brand-gold transition-colors">
+                  Team
                 </Link>
               </li>
               <li>
@@ -118,14 +144,18 @@ export default function Footer() {
                 <MapPin className="h-5 w-5 text-brand-gold shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-brand-ivory block">Main Showroom</span>
-                  <span className="text-brand-grey text-xs">VKI Area, Jaipur, Rajasthan, India</span>
+                  <span className="text-brand-grey text-xs">
+                    {settings?.showroom_address || "Opp. Krishi Mandi, Basni, Jodhpur, Rajasthan, India"}
+                  </span>
                 </div>
               </li>
               <li className="flex items-start space-x-3">
                 <MapPin className="h-5 w-5 text-brand-gold shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-brand-ivory block">Processing Unit</span>
-                  <span className="text-brand-grey text-xs">Industrial Area, Kishangarh, Rajasthan, India</span>
+                  <span className="text-brand-grey text-xs">
+                    {settings?.processing_address || "Industrial Area, Phase 2, Kishangarh, Rajasthan, India"}
+                  </span>
                 </div>
               </li>
             </ul>
@@ -139,16 +169,15 @@ export default function Footer() {
             <ul className="space-y-4 text-sm font-sans">
               <li className="flex items-center space-x-3">
                 <Phone className="h-4 w-4 text-brand-gold" />
-                <span className="text-brand-grey">+91 98765 43210</span>
+                <span className="text-brand-grey">{phone}</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-brand-gold" />
-                <span className="text-brand-grey">info@sudhirmarbels.com</span>
+                <span className="text-brand-grey">{email}</span>
               </li>
-              <li className="text-xs text-brand-grey leading-relaxed pt-2">
-                Showroom Hours:<br />
-                Mon - Sat: 9:00 AM - 7:00 PM<br />
-                Sunday: Closed
+              <li className="text-xs text-brand-grey leading-relaxed pt-2 whitespace-pre-line">
+                Showroom Hours:{"\n"}
+                {hours}
               </li>
             </ul>
           </div>
@@ -156,7 +185,7 @@ export default function Footer() {
 
         {/* Bottom Rights */}
         <div className="flex flex-col sm:flex-row justify-between items-center pt-8 text-xs text-brand-grey font-sans gap-4">
-          <p>© {new Date().getFullYear()} Sudhir Marbels. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {settings?.name || "Arihant Marbles and Granite jodhpur"}. All rights reserved.</p>
           <div className="flex space-x-6">
             <Link href="/privacy" className="hover:text-brand-gold transition-colors">
               Privacy Policy
@@ -170,3 +199,4 @@ export default function Footer() {
     </footer>
   );
 }
+

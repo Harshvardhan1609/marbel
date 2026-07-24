@@ -84,7 +84,7 @@ export default async function AdminDashboardPage() {
           Dashboard Overview
         </h1>
         <p className="text-xs text-brand-grey font-sans">
-          Real-time metrics and administration controls for Sudhir Marbels.
+          Real-time metrics and administration controls for Arihant Marbles & Granite.
         </p>
       </div>
 
@@ -126,14 +126,14 @@ export default async function AdminDashboardPage() {
       <div className="bg-[#1A1A18] border border-brand-gold/10 p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md">
         <div className="space-y-2">
           <h3 className="font-serif text-lg text-brand-ivory font-semibold tracking-wide">
-            Need to update the public landing slides?
+            Need to update the website identity or content?
           </h3>
           <p className="text-xs text-brand-grey font-sans max-w-xl">
-            You can modify the hero slideshow photos, adjust processing plant stats, and customize the featured stone collections order directly inside the Content Editor without touching code.
+            You can modify the hero slideshow photos, adjust brand details (phone, email, addresses), update SEO metadata, and configure collections, team members, or gallery items directly in their editors.
           </p>
         </div>
         <a
-          href="/admin/content"
+          href="/admin/settings"
           className="px-6 py-3 bg-brand-gold text-brand-charcoal hover:bg-brand-ivory hover:text-brand-charcoal transition-all duration-300 font-sans text-xs font-semibold tracking-widest uppercase flex items-center justify-center gap-1.5 shrink-0 rounded-none"
         >
           <Settings className="h-4 w-4" />

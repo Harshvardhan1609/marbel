@@ -6,17 +6,24 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight, Search } from "lucide-react";
 import SearchOverlay from "@/components/layout/SearchOverlay";
+import { BrandSettings } from "@/lib/settings";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
   { label: "Collections", href: "/collections" },
+  { label: "Gallery", href: "/gallery" },
   { label: "Projects", href: "/projects" },
+  { label: "Team", href: "/team" },
   { label: "About", href: "/about" },
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
 ];
 
-export default function Header() {
+interface HeaderProps {
+  settings?: BrandSettings;
+}
+
+export default function Header({ settings }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -34,6 +41,11 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const shortName = settings?.short_name || "Arihant Marbles & Granite";
+  const nameParts = shortName.split(" ");
+  const firstWord = nameParts[0] || "Arihant";
+  const restOfName = nameParts.slice(1).join(" ") || "Marbles & Granite";
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-350 ${
@@ -46,12 +58,13 @@ export default function Header() {
         {/* Brand Logo */}
         <Link href="/" className="group flex flex-col">
           <span className="font-serif text-xl md:text-2xl tracking-widest text-brand-gold font-bold uppercase transition-colors group-hover:text-brand-ivory">
-            Sudhir
+            {firstWord}
           </span>
           <span className="text-[10px] md:text-xs tracking-[0.3em] text-brand-grey uppercase font-sans -mt-1 group-hover:text-brand-gold transition-colors">
-            Marbels
+            {restOfName}
           </span>
         </Link>
+
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center space-x-8">

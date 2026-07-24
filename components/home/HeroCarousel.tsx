@@ -26,12 +26,20 @@ const HERO_SLIDES = [
   },
 ];
 
+import { BrandSettings } from "@/lib/settings";
+
 interface CustomSlide {
   title: string;
   subtitle: string;
 }
 
-export default function HeroCarousel({ customSlides }: { customSlides?: CustomSlide[] | null }) {
+export default function HeroCarousel({
+  customSlides,
+  settings,
+}: {
+  customSlides?: CustomSlide[] | null;
+  settings?: BrandSettings;
+}) {
   const [current, setCurrent] = useState(0);
 
   const images = [
@@ -105,7 +113,7 @@ export default function HeroCarousel({ customSlides }: { customSlides?: CustomSl
             transition={{ duration: 0.6, delay: 0.1 }}
             className="inline-block text-xs font-sans tracking-[0.3em] uppercase text-brand-gold font-semibold"
           >
-            Sudhir Marbels Curator
+            {settings?.short_name || "Arihant Marbles & Granite"} Curator
           </motion.span>
 
           {/* Staggered Title Reveal */}

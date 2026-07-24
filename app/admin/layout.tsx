@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, ShoppingBag, Mail, FileEdit, LogOut, FileText } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Mail,
+  LogOut,
+  FileText,
+  Layers,
+  Users,
+  Image,
+  Settings,
+} from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -31,10 +41,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Collections", href: "/admin/collections", icon: Layers },
     { label: "Products", href: "/admin/products", icon: ShoppingBag },
+    { label: "Team Members", href: "/admin/team", icon: Users },
+    { label: "Gallery Editor", href: "/admin/gallery", icon: Image },
     { label: "Blog Editor", href: "/admin/blog", icon: FileText },
     { label: "Enquiries", href: "/admin/enquiries", icon: Mail },
-    { label: "Content Editor", href: "/admin/content", icon: FileEdit },
+    { label: "Site Settings", href: "/admin/settings", icon: Settings },
   ];
 
   return (
@@ -45,10 +58,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Logo block */}
           <Link href="/" className="flex flex-col">
             <span className="font-serif text-lg tracking-widest text-brand-gold font-bold uppercase">
-              Sudhir
+              Arihant
             </span>
             <span className="text-[9px] tracking-[0.3em] text-brand-grey uppercase font-sans -mt-1">
-              Marbels Control
+              Granite Control
             </span>
           </Link>
 
@@ -86,6 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
       </aside>
+
 
       {/* Main Content Pane */}
       <main className="flex-grow h-full overflow-y-auto bg-brand-charcoal p-8 md:p-12">

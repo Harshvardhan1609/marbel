@@ -3,8 +3,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface WhatsAppButtonProps {
+  phone?: string;
+  name?: string;
+}
 
-export default function WhatsAppButton() {
+export default function WhatsAppButton({ phone, name }: WhatsAppButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -23,9 +27,15 @@ export default function WhatsAppButton() {
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
 
-  const whatsappUrl = `https://wa.me/919876543210?text=${encodeURIComponent(
-    "Hello Sudhir Marbels, I am browsing your luxury stone collections and would like to request a consultation."
+  const rawNumber = phone || "+91 93529 95442";
+  const numericPhone = rawNumber.replace(/\D/g, "");
+  const formattedPhone = numericPhone.length === 10 ? `91${numericPhone}` : numericPhone;
+  const brandName = name || "Arihant Marbles & Granite";
+
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(
+    `Hello ${brandName}, I am browsing your luxury stone collections and would like to request a consultation.`
   )}`;
+
 
   return (
     <AnimatePresence>

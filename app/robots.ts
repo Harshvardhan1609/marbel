@@ -1,12 +1,19 @@
 import { MetadataRoute } from "next";
+import { getSEOSettings } from "@/lib/settings";
 
-export default function robots(): MetadataRoute.Robots {
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const seo = await getSEOSettings();
+  const baseUrl = seo.site_url || "https://arihantmarbles.com";
+
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
-      disallow: "/admin/",
+      allow: seo.allow_indexing ? "/" : "",
+      disallow: seo.allow_indexing ? "/admin/" : "/",
     },
-    sitemap: "https://sudhirmarbels.com/sitemap.xml",
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }
+

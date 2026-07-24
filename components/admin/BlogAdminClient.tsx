@@ -350,7 +350,7 @@ export default function BlogAdminClient({ initialPosts }: BlogAdminClientProps) 
                 ) : (
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-xs text-brand-grey font-sans">
-                      No blog articles found. Click "New Article" to write your first entry.
+                      No blog articles found. Click &quot;New Article&quot; to write your first entry.
                     </td>
                   </tr>
                 )}
