@@ -40,6 +40,7 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -60,6 +61,7 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
 
   const handleEdit = (member: TeamMember) => {
     setEditingMember(member);
+    setUploadError(null);
     reset({
       id: member.id,
       name: member.name,
@@ -74,6 +76,7 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
 
   const handleCreateNew = () => {
     setEditingMember(null);
+    setUploadError(null);
     reset({
       name: "",
       title: "",
@@ -102,6 +105,7 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
     if (!file) return;
 
     setUploadingImage(true);
+    setUploadError(null);
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -116,7 +120,8 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
       const { data } = supabase.storage.from("catalogue").getPublicUrl(filePath);
       setValue("image_url", data.publicUrl);
     } catch (err) {
-      alert("Portrait upload failed: " + (err as Error).message);
+      console.error(err);
+      setUploadError((err as Error).message);
     } finally {
       setUploadingImage(false);
     }
@@ -373,6 +378,11 @@ export default function TeamAdminClient({ initialTeam }: TeamAdminClientProps) {
                       />
                     </label>
                   </div>
+                  {uploadError && (
+                    <span className="text-[10px] text-red-400 block mt-1 font-sans">
+                      ⚠️ Upload Error: {uploadError}. (Run SQL migrations to setup storage buckets).
+                    </span>
+                  )}
                   {errors.image_url && (
                     <span className="text-[10px] text-red-400 block">{errors.image_url.message}</span>
                   )}

@@ -40,6 +40,7 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -60,6 +61,7 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
 
   const handleEdit = (item: GalleryItem) => {
     setEditingItem(item);
+    setUploadError(null);
     reset({
       id: item.id,
       title: item.title,
@@ -74,6 +76,7 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
 
   const handleCreateNew = () => {
     setEditingItem(null);
+    setUploadError(null);
     reset({
       title: "",
       description: "",
@@ -102,6 +105,7 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
     if (!file) return;
 
     setUploadingImage(true);
+    setUploadError(null);
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -116,7 +120,8 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
       const { data } = supabase.storage.from("catalogue").getPublicUrl(filePath);
       setValue("image_url", data.publicUrl);
     } catch (err) {
-      alert("Image upload failed: " + (err as Error).message);
+      console.error(err);
+      setUploadError((err as Error).message);
     } finally {
       setUploadingImage(false);
     }
@@ -379,6 +384,11 @@ export default function GalleryAdminClient({ initialGallery }: GalleryAdminClien
                       />
                     </label>
                   </div>
+                  {uploadError && (
+                    <span className="text-[10px] text-red-400 block mt-1 font-sans">
+                      ⚠️ Upload Error: {uploadError}. (Run SQL migrations to setup storage buckets).
+                    </span>
+                  )}
                   {errors.image_url && (
                     <span className="text-[10px] text-red-400 block">{errors.image_url.message}</span>
                   )}

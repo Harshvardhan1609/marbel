@@ -43,6 +43,7 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [customColour, setCustomColour] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -66,6 +67,7 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
 
   const handleEdit = (collection: Collection) => {
     setEditingCollection(collection);
+    setUploadError(null);
     reset({
       id: collection.id,
       name: collection.name,
@@ -80,6 +82,7 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
 
   const handleCreateNew = () => {
     setEditingCollection(null);
+    setUploadError(null);
     reset({
       name: "",
       slug: "",
@@ -129,6 +132,7 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
     if (!file) return;
 
     setUploadingImage(true);
+    setUploadError(null);
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -143,7 +147,8 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
       const { data } = supabase.storage.from("catalogue").getPublicUrl(filePath);
       setValue("image_url", data.publicUrl);
     } catch (err) {
-      alert("Image upload failed: " + (err as Error).message);
+      console.error(err);
+      setUploadError((err as Error).message);
     } finally {
       setUploadingImage(false);
     }
@@ -431,6 +436,11 @@ export default function CollectionsAdminClient({ initialCollections }: Collectio
                       />
                     </label>
                   </div>
+                  {uploadError && (
+                    <span className="text-[10px] text-red-400 block mt-1 font-sans">
+                      ⚠️ Upload Error: {uploadError}. (Run SQL migrations to setup storage buckets).
+                    </span>
+                  )}
                   {errors.image_url && (
                     <span className="text-[10px] text-red-400 block">{errors.image_url.message}</span>
                   )}

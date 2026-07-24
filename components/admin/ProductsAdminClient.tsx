@@ -61,6 +61,7 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -112,6 +113,7 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
 
   const handleAddNew = () => {
     setEditingProduct(null);
+    setUploadError(null);
     reset({
       name: "",
       slug: "",
@@ -147,6 +149,7 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
     if (!file) return;
 
     setUploadingImage(true);
+    setUploadError(null);
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -168,9 +171,8 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
         setValue("image_urls", [urlData.publicUrl]);
       }
     } catch (err) {
-      console.warn("Storage upload failed, simulating mockup URL:", err);
-      // Fallback placeholder image URL
-      setValue("image_urls", ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=600"]);
+      console.error(err);
+      setUploadError((err as Error).message);
     } finally {
       setUploadingImage(false);
     }
@@ -599,6 +601,11 @@ export default function ProductsAdminClient({ initialProducts, categories }: Pro
                       {watchedImages[0] || "No photo chosen"}
                     </span>
                   </div>
+                  {uploadError && (
+                    <span className="text-[10px] text-red-400 block mt-1 font-sans">
+                      ⚠️ Upload Error: {uploadError}. (Run SQL migrations to setup storage buckets).
+                    </span>
+                  )}
                   {errors.image_urls && (
                     <span className="text-[10px] text-red-400 block">{errors.image_urls.message}</span>
                   )}
